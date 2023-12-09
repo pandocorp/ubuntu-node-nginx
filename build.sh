@@ -7,5 +7,9 @@
 
 
 
-version=4.0.0
+#version=4.0.0
+#docker buildx build --push --tag gramcha/ubuntu-node-nginx:$version -f Dockerfile-node18-nginx-consul -o type=image --platform=linux/arm64,linux/amd64 .
+
+
+version=5.0.0
 docker buildx build --push --tag gramcha/ubuntu-node-nginx:$version -f Dockerfile-node18-nginx-consul -o type=image --platform=linux/arm64,linux/amd64 .

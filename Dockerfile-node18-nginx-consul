@@ -20,9 +20,10 @@ RUN apt-get -y update && \
     apt-get install -y unzip && \
     apt-get install -y nginx && \
     apt-get install -y rpl && \
+    apt-get install bash-completion && \
     apt-get install -y uuid-runtime
 
-
+RUN  bash --version
 # setup node.js, yarn
 RUN curl -sL https://deb.nodesource.com/setup_18.x | sudo bash -
 RUN apt-get install -f --yes nodejs
