@@ -1,4 +1,4 @@
-FROM ubuntu:lunar-20231004 AS BUILD_IMAGE
+FROM ubuntu:lunar AS BUILD_IMAGE
 
 LABEL maintainer="gramcha <gramcha@outlook.com>"
 
