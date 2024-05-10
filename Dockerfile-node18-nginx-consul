@@ -1,12 +1,9 @@
-FROM ubuntu:lunar-20231004 AS BUILD_IMAGE
+FROM ubuntu:22.04 AS BUILD_IMAGE
 
 LABEL maintainer="gramcha <gramcha@outlook.com>"
 
 ENV BOOTSTRAP=bootstrap
 ENV TZ=Etc/UTC
-
-# important step to avoid awscli interactive question select timezone during installation
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # update os and download required packages
 RUN apt-get -y update && \
@@ -21,13 +18,11 @@ RUN apt-get -y update && \
     apt-get install -y nginx && \
     apt-get install -y rpl && \
     apt-get install bash-completion && \
-    apt-get install -y uuid-runtime
-
-RUN  bash --version
-# setup node.js, yarn
-RUN curl -sL https://deb.nodesource.com/setup_18.x | sudo bash -
-RUN apt-get install -f --yes nodejs
-RUN apt-get install -f --yes build-essential
+    apt-get install -y uuid-runtime && \
+    bash --version && \
+    curl -sL https://deb.nodesource.com/setup_18.x | sudo bash - && \
+    apt-get install -f --yes nodejs && \
+    apt-get install -f --yes build-essential
 
 
 # before calling the npm install work directory needs to be set from node 18
