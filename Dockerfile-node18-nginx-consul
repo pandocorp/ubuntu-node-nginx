@@ -4,7 +4,8 @@ LABEL maintainer="gramcha <gramcha@outlook.com>"
 
 ENV BOOTSTRAP=bootstrap
 ENV TZ=Etc/UTC
-
+# important step to avoid interactive question of select timezone during installation
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # update os and download required packages
 RUN apt-get -y update && \
     apt-get -y dist-upgrade && \
@@ -22,7 +23,9 @@ RUN apt-get -y update && \
     bash --version && \
     curl -sL https://deb.nodesource.com/setup_18.x | sudo bash - && \
     apt-get install -f --yes nodejs && \
-    apt-get install -f --yes build-essential
+    apt-get install -f --yes build-essential && \
+    apt-get install -y weasyprint
+
 
 
 # before calling the npm install work directory needs to be set from node 18
@@ -36,7 +39,9 @@ WORKDIR /root/ubuntu-node-nginx/
 RUN npm install -g pm2 && \
     bash install-consul.sh && \
     bash install-yarn.sh && \
-    chmod +x entrypoint.sh
+    chmod +x entrypoint.sh && \
+    pm2 install pm2-logrotate && \
+    pm2 set pm2-logrotate:max_size 10M
 
 EXPOSE 80
 EXPOSE 443
