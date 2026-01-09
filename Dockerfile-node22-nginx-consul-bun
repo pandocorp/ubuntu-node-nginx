@@ -1,0 +1,57 @@
+FROM ubuntu:22.04 AS BUILD_IMAGE
+
+LABEL maintainer="gramcha <gramcha@outlook.com>"
+
+ENV BOOTSTRAP=bootstrap
+ENV TZ=Etc/UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+ARG NPM_USERNAME
+ARG NPM_PASSWORD
+ARG NPM_EMAIL
+ARG NPM_REGISTRY
+
+RUN apt-get -y update && \
+    apt-get -y dist-upgrade && \
+    apt-get install -y sudo && \
+    apt-get install -y curl && \
+    apt-get install -y vim && \
+    apt-get install -y wget && \
+    apt-get install -y net-tools && \
+    apt-get install -y lsof && \
+    apt-get install -y unzip && \
+    apt-get install -y nginx && \
+    apt-get install -y rpl && \
+    apt-get install bash-completion && \
+    apt-get install -y uuid-runtime && \
+    apt-get install -f --yes build-essential && \
+    apt-get install -y weasyprint
+
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo bash - && \
+    apt-get install -f --yes nodejs
+
+RUN if [ -n "$NPM_USERNAME" ] && [ -n "$NPM_PASSWORD" ]; then \
+        REGISTRY_URL="${NPM_REGISTRY:-https://npm-registry.gopando.co}"; \
+        REGISTRY_HOST=$(echo "$REGISTRY_URL" | sed 's|https\?://||' | sed 's|/.*||'); \
+    fi
+
+RUN mkdir /root/ubuntu-node-nginx/
+ADD . /root/ubuntu-node-nginx/
+WORKDIR /root/ubuntu-node-nginx/
+
+RUN bash install-consul.sh && \
+    chmod +x entrypoint-bun.sh
+
+EXPOSE 80
+EXPOSE 443
+
+STOPSIGNAL SIGQUIT
+
+COPY entrypoint-bun.sh /root/ubuntu-node-nginx/
+
+ENTRYPOINT ["/root/ubuntu-node-nginx/entrypoint-bun.sh"]
+
+CMD ["Hello", ", world!"]
+
