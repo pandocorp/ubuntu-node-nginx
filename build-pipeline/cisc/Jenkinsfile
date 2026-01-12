@@ -56,10 +56,10 @@ node(nodeLabel) {
     }
     stage('unit-test') {
         if (isUTEnabled) {
-            sh "docker build --target unittest -t core-logistics-common-masters:ut ."
+            sh "docker build --target unittest -t fruitstand-base-image:ut ."
         }
     }
-    stage('cisc/amd64/core-logistics-common-masters') {
+    stage('cisc/amd64/fruitstand-base-image') {
         sh '$(aws ecr get-login --no-include-email --region ap-south-1)'
         sh "docker buildx build --push --tag 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${amdDockerImageNumber} --build-arg NPM_USERNAME=$npmUsername --build-arg NPM_PASSWORD=$npmPassword --build-arg NPM_EMAIL=$npmEmail --build-arg NPM_REGISTRY=$npmRegistry -f Dockerfile -o type=image --platform=linux/amd64 ."
 
