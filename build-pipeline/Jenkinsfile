@@ -1,0 +1,90 @@
+ecrRepo = '669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image';
+
+def fetchFreeNodeLabel() {
+  Jenkins jenkins = Jenkins.instance;
+  def jenkinsNodes =jenkins.nodes;
+  nodeLabel = null;
+  // using arm and amd processor since it is just triggering job
+  buildNodeLabels = ['graviton_docker': false, 'cl1_label': false, 'cl2_label': false, 'cl3_label': false,'cl4_label': false, 'cl5_label': false, 'cl58_label': false, 'cl153_label': false, 'node18_docker_label':false, 'docker_build_machine':false, 'staging_label':false, 'dev_label_1':false, 'dev_label_2:':false, 'dev_label_3':false, 'dev_label_4':false, 'dev_label_5':false, 'dev_label_6':false, 'dev_label_7':false, 'dev_label_8':false, 'dev_label_9':false, 'dev_label_10':false, 'dev_label_11':false, 'dev_label_12':false, 'dev_label_13':false, 'dev_label_14':false, 'dev_label_15':false, 'dev_label_16':false, 'dev_label_1':false, 'dev_label_18':false, 'dev_label_19':false, 'dev_label_20':false, 'dev_label_21':false, 'dev_label_22':false, 'dev_label_23':false, 'dev_label_26':false, 'dev_label_28':false];
+  for (Node node in jenkinsNodes) {
+    nodeLabelString = node.getLabelString();
+    if (buildNodeLabels.containsKey(nodeLabelString)) {
+      if (!node.getComputer().isOffline())  {
+        if(node.getComputer().countBusy()==0) {
+          buildNodeLabels[nodeLabelString] = true;
+          println "${nodeLabelString} is available";
+        } else {
+          println "$nodeLabelString is busy !!!";
+        }
+      } else {
+        println "$nodeLabelString is offline !!!";
+      }
+    }
+    /*else {
+      println "$nodeLabelString is not aviable in node list !!!"
+    } */
+  }
+  for ( e in buildNodeLabels ) {
+    if (nodeLabel == null && e.value == true) {
+      nodeLabel = e.key;
+      break;
+    }
+  }
+  return nodeLabel;
+}
+
+def geCurrentFormattedDate() {
+    def currentDate = new Date();
+    return currentDate.format("yyyy-MM-dd");
+}
+
+def constructDockerImageNumber() {
+    def currentTime = geCurrentFormattedDate();
+    println "currentTime - $currentTime";
+    println "${env.BUILD_NUMBER}-${currentTime}";
+    return "${env.BUILD_NUMBER}-${currentTime}";
+}
+
+nodeLabel = fetchFreeNodeLabel();
+println "Selected node for build - $nodeLabel";
+dockerImageNumber = constructDockerImageNumber();
+armDockerImageNumber = "${dockerImageNumber}-arm"
+amdDockerImageNumber = "${dockerImageNumber}-amd"
+println(dockerImageNumber);
+println(armDockerImageNumber);
+println(amdDockerImageNumber);
+
+node(nodeLabel) {
+    parallel(
+           'Building CISC docker image': {
+              stage('triggering intel/amd build') {
+                  sh "echo intel/amd build triggered";
+                  build job: 'fs-cl-platform/amd-builders/fs-base-image-build-amd-builder', parameters: [
+                  [$class: 'StringParameterValue', name: 'dockerImageNumber', value: dockerImageNumber],
+                  [$class: 'StringParameterValue', name: 'amdDockerImageNumber', value: amdDockerImageNumber],
+                  [$class: 'StringParameterValue', name: 'BRANCH', value: params.BRANCH],
+                  [$class: 'BooleanParameterValue', name: 'RUN_UT', value: params.RUN_UT]], wait: true
+              }
+           },
+           'Building RISC docker image': {
+             stage('triggering arm build') {
+                 sh "echo intel/amd build triggered";
+                 build job: 'fs-cl-platform/arm-builders/fs-base-image-build-arm-builder', parameters: [
+                 [$class: 'StringParameterValue', name: 'dockerImageNumber', value: dockerImageNumber],
+                 [$class: 'StringParameterValue', name: 'armDockerImageNumber', value: armDockerImageNumber],
+                 [$class: 'StringParameterValue', name: 'BRANCH', value: params.BRANCH],
+                 [$class: 'BooleanParameterValue', name: 'RUN_UT', value: params.RUN_UT]], wait: true
+             }
+           },
+    );
+    stage('multi-arch-manifest') {
+        sh '''
+          aws ecr get-login-password --region ap-south-1 | \
+          docker login --username AWS --password-stdin 669650451927.dkr.ecr.ap-south-1.amazonaws.com
+        '''
+        sh "docker buildx imagetools create -t 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${dockerImageNumber} 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${armDockerImageNumber} 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${amdDockerImageNumber}"
+    }
+    stage('summary') {
+       manager.createSummary("https://ci.gopando.in/static/243b2051/images/48x48/search.png").appendText("<div>Deploy : ${dockerImageNumber}</div>", false)
+    }
+}
