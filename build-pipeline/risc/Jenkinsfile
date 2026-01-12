@@ -1,0 +1,69 @@
+ecrRepo = '669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image'
+npmUsername = params.NPM_USERNAME
+npmPassword = params.NPM_PASSWORD
+npmEmail = params.NPM_EMAIL_ID
+npmRegistry = params.NPM_REGISTRY
+isUTEnabled = params.RUN_UT
+dockerImageNumber = params.dockerImageNumber
+armDockerImageNumber = params.armDockerImageNumber
+
+def fetchFreeNodeLabel() {
+  Jenkins jenkins = Jenkins.instance;
+  def jenkinsNodes =jenkins.nodes;
+  nodeLabel = null;
+  // using risc architecture machines - graviton
+  buildNodeLabels = ['graviton_docker': false, 'cl1_label': false, 'cl2_label': false, 'cl3_label': false,'cl4_label': false, 'cl5_label': false, 'cl58_label': false, 'cl153_label': false, 'cl115_label': false, 'cl242_label': false, 'cl251_label': false, 'cl290_label': false];
+  for (Node node in jenkinsNodes) {
+    nodeLabelString = node.getLabelString();
+    if (buildNodeLabels.containsKey(nodeLabelString)) {
+      if (!node.getComputer().isOffline())  {
+        if(node.getComputer().countBusy()==0) {
+          buildNodeLabels[nodeLabelString] = true;
+          println "${nodeLabelString} is available";
+        } else {
+          println "$nodeLabelString is busy !!!";
+        }
+      } else {
+        println "$nodeLabelString is offline !!!";
+      }
+    }
+    /*else {
+      println "$nodeLabelString is not aviable in node list !!!"
+    } */
+  }
+  for ( e in buildNodeLabels ) {
+    if (nodeLabel == null && e.value == true) {
+      nodeLabel = e.key;
+      break;
+    }
+  }
+  return nodeLabel;
+}
+
+nodeLabel = fetchFreeNodeLabel();
+println "Selected node for build - $nodeLabel";
+
+node(nodeLabel) {
+    stage('incoming') {
+        echo params.dockerImageNumber;
+        echo params.armDockerImageNumber;
+        echo params.BRANCH;
+        echo params.RUN_UT.toString();
+    }
+    stage('clone repo') {
+        /* Let's make sure we have the repository cloned to our workspace */
+        checkout scm;
+    }
+    stage('unit-test') {
+        if (isUTEnabled) {
+            sh "docker build --target unittest -t fruitstand-base-image:ut ."
+        }
+    }
+    stage('risc/arm64/fruitstand-base-image') {
+        sh '$(aws ecr get-login --no-include-email --region ap-south-1)'
+        sh "docker buildx build --push --tag 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${armDockerImageNumber} --build-arg NPM_USERNAME=$npmUsername --build-arg NPM_PASSWORD=$npmPassword --build-arg NPM_EMAIL=$npmEmail --build-arg NPM_REGISTRY=$npmRegistry -f Dockerfile -o type=image --platform=linux/arm64 ."
+    }
+    stage('summary') {
+       manager.createSummary("https://ci.gopando.in/static/243b2051/images/48x48/search.png").appendText("<div>Deploy : ${dockerImageNumber}</div>", false)
+    }
+}
