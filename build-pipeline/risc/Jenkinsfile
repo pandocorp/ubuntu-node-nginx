@@ -61,7 +61,7 @@ node(nodeLabel) {
     }
     stage('risc/arm64/fruitstand-base-image') {
         sh '$(aws ecr get-login --no-include-email --region ap-south-1)'
-        sh "docker buildx build --push --tag 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${armDockerImageNumber} --build-arg NPM_USERNAME=$npmUsername --build-arg NPM_PASSWORD=$npmPassword --build-arg NPM_EMAIL=$npmEmail --build-arg NPM_REGISTRY=$npmRegistry -f Dockerfile -o type=image --platform=linux/arm64 ."
+        sh "docker buildx build --push --tag 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${armDockerImageNumber} --build-arg NPM_USERNAME=$npmUsername --build-arg NPM_PASSWORD=$npmPassword --build-arg NPM_EMAIL=$npmEmail --build-arg NPM_REGISTRY=$npmRegistry -f Dockerfile-node22-nginx-consul-bun -o type=image --platform=linux/arm64 ."
     }
     stage('summary') {
        manager.createSummary("https://ci.gopando.in/static/243b2051/images/48x48/search.png").appendText("<div>Deploy : ${dockerImageNumber}</div>", false)
