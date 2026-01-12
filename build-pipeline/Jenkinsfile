@@ -33,23 +33,17 @@ def fetchFreeNodeLabel() {
   return nodeLabel;
 }
 
-def geCurrentFormattedDate() {
-    def currentDate = new Date();
-    return currentDate.format("yyyy-MM-dd");
+def constructDockerImageNumber() {
+    return "bun_image-${env.BUILD_NUMBER}"
 }
 
-def constructDockerImageNumber() {
-    def currentTime = geCurrentFormattedDate();
-    println "currentTime - $currentTime";
-    println "${env.BUILD_NUMBER}-${currentTime}";
-    return "${env.BUILD_NUMBER}-${currentTime}";
-}
 
 nodeLabel = fetchFreeNodeLabel();
 println "Selected node for build - $nodeLabel";
-dockerImageNumber = constructDockerImageNumber();
+dockerImageNumber = constructDockerImageNumber()
 armDockerImageNumber = "${dockerImageNumber}-arm"
 amdDockerImageNumber = "${dockerImageNumber}-amd"
+
 println(dockerImageNumber);
 println(armDockerImageNumber);
 println(amdDockerImageNumber);
