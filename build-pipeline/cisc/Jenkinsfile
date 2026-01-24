@@ -1,0 +1,70 @@
+ecrRepo = '669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image'
+npmUsername = params.NPM_USERNAME
+npmPassword = params.NPM_PASSWORD
+npmEmail = params.NPM_EMAIL_ID
+npmRegistry = params.NPM_REGISTRY
+isUTEnabled = params.RUN_UT
+dockerImageNumber = params.dockerImageNumber
+amdDockerImageNumber = params.amdDockerImageNumber
+
+def fetchFreeNodeLabel() {
+  Jenkins jenkins = Jenkins.instance;
+  def jenkinsNodes =jenkins.nodes;
+  nodeLabel = null;
+  // using cisc architecture machines - amd/intel
+  buildNodeLabels = ['node18_docker_label':false, 'docker_build_machine':false, 'staging_label':false, 'dev_label_1':false, 'dev_label_2:':false, 'dev_label_3':false, 'dev_label_4':false, 'dev_label_5':false, 'dev_label_6':false, 'dev_label_7':false, 'dev_label_8':false, 'dev_label_9':false, 'dev_label_10':false, 'dev_label_11':false, 'dev_label_12':false, 'dev_label_13':false, 'dev_label_14':false, 'dev_label_15':false, 'dev_label_16':false, 'dev_label_17':false, 'dev_label_18':false, 'dev_label_19':false, 'dev_label_20':false, 'dev_label_21':false, 'dev_label_22':false, 'dev_label_23':false, 'dev_label_26':false, 'dev_label_28':false];
+  for (Node node in jenkinsNodes) {
+    nodeLabelString = node.getLabelString();
+    if (buildNodeLabels.containsKey(nodeLabelString)) {
+      if (!node.getComputer().isOffline())  {
+        if(node.getComputer().countBusy()==0) {
+          buildNodeLabels[nodeLabelString] = true;
+          println "${nodeLabelString} is available";
+        } else {
+          println "$nodeLabelString is busy !!!";
+        }
+      } else {
+        println "$nodeLabelString is offline !!!";
+      }
+    }
+    /*else {
+      println "$nodeLabelString is not aviable in node list !!!"
+    } */
+  }
+  for ( e in buildNodeLabels ) {
+    if (nodeLabel == null && e.value == true) {
+      nodeLabel = e.key;
+      break;
+    }
+  }
+  return nodeLabel;
+}
+
+nodeLabel = fetchFreeNodeLabel();
+println "Selected node for build - $nodeLabel";
+
+node(nodeLabel) {
+    stage('incoming') {
+        echo params.dockerImageNumber;
+        echo params.amdDockerImageNumber;
+        echo params.BRANCH;
+        echo params.RUN_UT.toString();
+    }
+    stage('clone repo') {
+        /* Let's make sure we have the repository cloned to our workspace */
+        checkout scm;
+    }
+    stage('unit-test') {
+        if (isUTEnabled) {
+            sh "docker build --target unittest -t fruitstand-base-image:ut ."
+        }
+    }
+    stage('cisc/amd64/fruitstand-base-image') {
+        sh '$(aws ecr get-login --no-include-email --region ap-south-1)'
+        sh "docker buildx build --push --tag 669650451927.dkr.ecr.ap-south-1.amazonaws.com/fruitstand-base-image:${amdDockerImageNumber} --build-arg NPM_USERNAME=$npmUsername --build-arg NPM_PASSWORD=$npmPassword --build-arg NPM_EMAIL=$npmEmail --build-arg NPM_REGISTRY=$npmRegistry -f Dockerfile-node22-nginx-consul-bun -o type=image --platform=linux/amd64 ."
+
+    }
+    stage('summary') {
+       manager.createSummary("https://ci.gopando.in/static/243b2051/images/48x48/search.png").appendText("<div>Deploy : ${dockerImageNumber}</div>", false)
+    }
+}
